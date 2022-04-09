@@ -1,6 +1,16 @@
-import React from 'react'
+import React, { useMemo } from 'react'
+import { useAddress, useDisconnect, useMetamask } from '@thirdweb-dev/react'
 
 function NFTDropPage() {
+  // Auth
+  const connectWithMetamask = useMetamask()
+  const address = useAddress() || ''
+  const disconnect = useDisconnect()
+
+  const formatAddress = useMemo(() => {
+    return `${address.slice(0, 4)}...${address.slice(-4)}`
+  }, [address])
+
   return (
     <div className="flex h-screen flex-col lg:grid lg:grid-cols-10">
       {/* Left */}
@@ -32,12 +42,21 @@ function NFTDropPage() {
             </span>
             NFT Market Place
           </h1>
-          <button className="pxy-4 rounded-full bg-rose-400 px-4 py-2 text-xs font-bold text-white lg:px-5 lg:py-3 lg:text-base">
-            Sign In
+          <button
+            onClick={() => (address ? disconnect() : connectWithMetamask())}
+            className="pxy-4 rounded-full bg-rose-400 px-4 py-2 text-xs font-bold text-white lg:px-5 lg:py-3 lg:text-base"
+          >
+            {address ? 'Sign Out' : 'Sign In'}
           </button>
         </header>
 
         <hr className="my-2 border" />
+
+        {address && (
+          <p className="text-center text-sm text-rose-400">
+            You're logged in with wallet {formatAddress}
+          </p>
+        )}
 
         {/* Content */}
         <div className="mt-10 flex flex-1 flex-col items-center space-y-6 text-center lg:justify-center lg:space-y-0">
