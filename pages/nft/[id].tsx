@@ -11,6 +11,7 @@ import { getCollectionsById } from '../../api'
 import { Collection } from '../../typings'
 import { urlFor } from '../../sanity'
 import { BigNumber } from 'ethers'
+import toast, { Toaster } from 'react-hot-toast'
 
 interface NFTDropPageProps {
   collection: Collection
@@ -67,6 +68,60 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
     return <p className="pt-2 text-xl text-green-500">{displayText}</p>
   }, [loading, getFormatNFTClaimedText])
 
+  const handleMintNft = useCallback(() => {
+    if (!nftDrop || !address) return
+
+    const quantity = 1 // how many unique NFTs you want to claim
+
+    setLoading(true)
+    const notification = toast.loading('Minting...', {
+      style: {
+        background: 'white',
+        color: 'green',
+        fontWeight: 'bolder',
+        fontSize: '17px',
+        padding: '20px',
+      },
+    })
+
+    nftDrop
+      .claimTo(address, quantity)
+      .then(async (tx) => {
+        const receipt = tx[0].receipt //
+        const claimedTokenId = tx[0].id
+        const claimedNFT = await tx[0].data()
+        toast('HOORAY.. You Successfully Minted!', {
+          duration: 8000,
+          style: {
+            background: 'green',
+            color: 'white',
+            fontWeight: 'bolder',
+            fontSize: '17px',
+            padding: '20px',
+          },
+        })
+        console.log('receipt', receipt)
+        console.log('claimedTokenId', claimedTokenId)
+        console.log('claimedNFT', claimedNFT)
+      })
+      .catch((err) => {
+        console.log(err)
+        toast('Whoops... Something went wrong!', {
+          style: {
+            background: 'red',
+            color: 'white',
+            fontWeight: 'bolder',
+            fontSize: '17px',
+            padding: '20px',
+          },
+        })
+      })
+      .finally(() => {
+        setLoading(false)
+        toast.dismiss(notification)
+      })
+  }, [nftDrop, address])
+
   const renderMintButton = useCallback(() => {
     const isDisabledMintButton =
       loading || claimedSupply === totalSupply?.toNumber() || !address
@@ -83,6 +138,7 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
 
     return (
       <button
+        onClick={handleMintNft}
         className="mt-10 h-16 rounded-full bg-red-600 text-white disabled:bg-gray-400"
         disabled={isDisabledMintButton}
       >
@@ -93,6 +149,8 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
 
   return (
     <div className="flex h-screen flex-col lg:grid lg:grid-cols-10">
+      <Toaster position="bottom-center" />
+
       {/* Left */}
       <div className="bg-gradient-to-br from-cyan-800 to-rose-500 lg:col-span-4">
         <div className="flex flex-col items-center justify-center py-2 lg:min-h-screen">
