@@ -19,6 +19,7 @@ interface NFTDropPageProps {
 function NFTDropPage({ collection }: NFTDropPageProps) {
   const [claimedSupply, setClaimedSupply] = useState(0)
   const [totalSupply, setTotalSupply] = useState<BigNumber>()
+  const [priceInEth, setPriceInEth] = useState('')
   const [loading, setLoading] = useState(true)
   const nftDrop = useNFTDrop(collection.address)
 
@@ -29,7 +30,15 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
 
   useEffect(() => {
     if (!nftDrop) return
+    const fetchPrice = async () => {
+      const claimConditions = await nftDrop.claimConditions.getAll()
+      setPriceInEth(claimConditions?.[0].currencyMetadata.displayValue)
+    }
+    fetchPrice()
+  }, [nftDrop])
 
+  useEffect(() => {
+    if (!nftDrop) return
     const fetchNFTDDropData = async () => {
       setLoading(true)
       const claimed = await nftDrop.getAllClaimed()
@@ -38,7 +47,6 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
       setTotalSupply(total)
       setLoading(false)
     }
-
     fetchNFTDDropData()
   }, [nftDrop])
 
@@ -58,6 +66,30 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
 
     return <p className="pt-2 text-xl text-green-500">{displayText}</p>
   }, [loading, getFormatNFTClaimedText])
+
+  const renderMintButton = useCallback(() => {
+    const isDisabledMintButton =
+      loading || claimedSupply === totalSupply?.toNumber() || !address
+
+    let buttonText = `Mint NFT (${priceInEth ? priceInEth : 'loading...'} ETH)`
+
+    if (loading) {
+      buttonText = 'loading'
+    } else if (!address) {
+      buttonText = 'Sign in to Mint'
+    } else if (claimedSupply === totalSupply?.toNumber()) {
+      buttonText = 'SOLD OUT'
+    }
+
+    return (
+      <button
+        className="mt-10 h-16 rounded-full bg-red-600 text-white disabled:bg-gray-400"
+        disabled={isDisabledMintButton}
+      >
+        <span className="font-bold">{buttonText}</span>
+      </button>
+    )
+  }, [loading, claimedSupply, totalSupply, address, priceInEth])
 
   return (
     <div className="flex h-screen flex-col lg:grid lg:grid-cols-10">
@@ -132,9 +164,7 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
         </div>
 
         {/* Mint Button */}
-        <button className="mt-10 h-16 rounded-full bg-red-600 text-white">
-          Mint NFT (0.01 ETH)
-        </button>
+        {renderMintButton()}
       </div>
     </div>
   )
