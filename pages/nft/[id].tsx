@@ -22,6 +22,8 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
   const [totalSupply, setTotalSupply] = useState<BigNumber>()
   const [priceInEth, setPriceInEth] = useState('')
   const [loading, setLoading] = useState(true)
+  const [claimedLengthLoading, setClaimedLengthLoading] = useState(true)
+
   const nftDrop = useNFTDrop(collection.address)
 
   // Auth
@@ -29,27 +31,33 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
   const address = useAddress() || ''
   const disconnect = useDisconnect()
 
-  useEffect(() => {
+  const fetchNFTDDropData = useCallback(async () => {
     if (!nftDrop) return
-    const fetchPrice = async () => {
-      const claimConditions = await nftDrop.claimConditions.getAll()
-      setPriceInEth(claimConditions?.[0].currencyMetadata.displayValue)
-    }
-    fetchPrice()
+
+    setLoading(true)
+    setClaimedLengthLoading(true)
+    const claimed = await nftDrop.getAllClaimed()
+    const total = await nftDrop.totalSupply()
+    const claimConditions = await nftDrop.claimConditions.getAll()
+
+    setClaimedSupply(claimed.length)
+    setTotalSupply(total)
+    setPriceInEth(claimConditions?.[0].currencyMetadata.displayValue)
+    setLoading(false)
+    setClaimedLengthLoading(false)
+  }, [nftDrop])
+
+  const updateNFTClaimedLength = useCallback(async () => {
+    if (!nftDrop) return
+    setClaimedLengthLoading(true)
+    const claimed = await nftDrop.getAllClaimed()
+    setClaimedSupply(claimed.length)
+    setClaimedLengthLoading(false)
   }, [nftDrop])
 
   useEffect(() => {
-    if (!nftDrop) return
-    const fetchNFTDDropData = async () => {
-      setLoading(true)
-      const claimed = await nftDrop.getAllClaimed()
-      const total = await nftDrop.totalSupply()
-      setClaimedSupply(claimed.length)
-      setTotalSupply(total)
-      setLoading(false)
-    }
     fetchNFTDDropData()
-  }, [nftDrop])
+  }, [])
 
   const getFormatNFTClaimedText = useMemo(() => {
     const total = totalSupply ? totalSupply?.toString() : ''
@@ -61,12 +69,12 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
   }, [address])
 
   const renderNFTCaimedText = useCallback(() => {
-    let displayText = loading
+    let displayText = claimedLengthLoading
       ? 'Loading Supply Count...'
       : getFormatNFTClaimedText
 
     return <p className="pt-2 text-xl text-green-500">{displayText}</p>
-  }, [loading, getFormatNFTClaimedText])
+  }, [claimedLengthLoading, getFormatNFTClaimedText])
 
   const handleMintNft = useCallback(() => {
     if (!nftDrop || !address) return
@@ -100,6 +108,8 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
             padding: '20px',
           },
         })
+
+        updateNFTClaimedLength()
         console.log('receipt', receipt)
         console.log('claimedTokenId', claimedTokenId)
         console.log('claimedNFT', claimedNFT)
