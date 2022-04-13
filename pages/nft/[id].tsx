@@ -1,26 +1,63 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import type { GetServerSideProps } from 'next'
 import Link from 'next/link'
-import { useAddress, useDisconnect, useMetamask } from '@thirdweb-dev/react'
+import {
+  useAddress,
+  useDisconnect,
+  useMetamask,
+  useNFTDrop,
+} from '@thirdweb-dev/react'
 import { getCollectionsById } from '../../api'
 import { Collection } from '../../typings'
 import { urlFor } from '../../sanity'
+import { BigNumber } from 'ethers'
 
 interface NFTDropPageProps {
   collection: Collection
 }
 
 function NFTDropPage({ collection }: NFTDropPageProps) {
+  const [claimedSupply, setClaimedSupply] = useState(0)
+  const [totalSupply, setTotalSupply] = useState<BigNumber>()
+  const [loading, setLoading] = useState(true)
+  const nftDrop = useNFTDrop(collection.address)
+
   // Auth
   const connectWithMetamask = useMetamask()
   const address = useAddress() || ''
   const disconnect = useDisconnect()
 
+  useEffect(() => {
+    if (!nftDrop) return
+
+    const fetchNFTDDropData = async () => {
+      setLoading(true)
+      const claimed = await nftDrop.getAllClaimed()
+      const total = await nftDrop.totalSupply()
+      setClaimedSupply(claimed.length)
+      setTotalSupply(total)
+      setLoading(false)
+    }
+
+    fetchNFTDDropData()
+  }, [nftDrop])
+
+  const getFormatNFTClaimedText = useMemo(() => {
+    const total = totalSupply ? totalSupply?.toString() : ''
+    return `${claimedSupply} / ${total} NFT's claimed`
+  }, [claimedSupply, totalSupply])
+
   const formatAddress = useMemo(() => {
     return `${address.slice(0, 4)}...${address.slice(-4)}`
   }, [address])
 
-  console.log('collection', collection)
+  const renderNFTCaimedText = useCallback(() => {
+    let displayText = loading
+      ? 'Loading Supply Count...'
+      : getFormatNFTClaimedText
+
+    return <p className="pt-2 text-xl text-green-500">{displayText}</p>
+  }, [loading, getFormatNFTClaimedText])
 
   return (
     <div className="flex h-screen flex-col lg:grid lg:grid-cols-10">
@@ -83,7 +120,15 @@ function NFTDropPage({ collection }: NFTDropPageProps) {
             {collection.title}
           </h1>
 
-          <p className="pt-2 text-xl text-green-500">13 / 21 NFT's claimed</p>
+          {renderNFTCaimedText()}
+
+          {loading && (
+            <img
+              className="h-80 w-80 object-contain"
+              src="https://cdn.hackernoon.com/images/0*4Gzjgh9Y7Gu8KEtZ.gif"
+              alt="loading"
+            />
+          )}
         </div>
 
         {/* Mint Button */}
